@@ -12,7 +12,7 @@ An unknown rotation $A \in SO(d)$ is observed through a stream of pairs $(x, y =
 W \leftarrow W + (y - Wx) x^\top
 ```
 
-The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. It works for any matrix and knows nothing about rotations; $W$ drifts off $SO(d)$. Each step projects the error away from one random direction. Loss contracts $1 - 1/d$ per step.
+The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. It works for any matrix and knows nothing about rotations; $W$ drifts off $SO(d)$. Each step projects the error away from one random direction, hence loss contracts $1 - 1/d$ per step.
 
 ### 2. Gradient descent + projection
 
@@ -20,7 +20,7 @@ The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. It works for
 W \leftarrow \mathrm{polar} \left( W + (y - Wx) x^\top \right)
 ```
 
-The same step, snapped back to the nearest rotation. The projection keeps only the rotational part of the correction. Loss contraction: $1 - 3/(2d)$.
+The same step, snapped back to the nearest rotation. The projection keeps only the rotational part of the correction.
 
 ### 3. A native update for rotations
 
@@ -28,8 +28,7 @@ The same step, snapped back to the nearest rotation. The projection keeps only t
 W \leftarrow R W, \qquad R = I + K + \frac{K^2}{1 + c}, \qquad K = y u^\top - u y^\top, \quad u = Wx, \quad c = u \cdot y
 ```
 
-$R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, never leaving $SO(d)$. Loss contraction: $1 - 2/d$.
-
+$R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, never leaving $SO(d)$.
 ## Result
 
 | Update | Uses | Contraction of $\mathbb{E} \Vert W - A \Vert_F^2$ |
