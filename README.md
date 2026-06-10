@@ -20,7 +20,7 @@ The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. Equivalent t
 W \leftarrow \mathrm{polar} \left( W + (y - Wx) x^\top \right)
 ```
 
-Kazcmarz step, snapped back to the nearest rotation. The projection keeps only the rotational part of the correction.
+Kazcmarz step, snapped back to the nearest rotation.
 
 ### 3. A native update for rotations
 
