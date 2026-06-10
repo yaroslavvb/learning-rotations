@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning Rotations Online</title>
+<meta name="description" content="Three ways to insert one fact into a matrix estimate — gradient descent, projected gradient descent, and a native rotation update — and why their convergence rates sit in ratio 1 : 1.5 : 2.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [
+    {left: '$$', right: '$$', display: true},
+    {left: '\\(', right: '\\)', display: false}
+  ]});"></script>
+<style>
+  :root {
+    --ink: #1c1e21;
+    --muted: #5c636b;
+    --rule: #e3e5e8;
+    --card: #f7f8f9;
+    --gd: #1f77b4;
+    --pgd: #e8740c;
+    --geo: #2c9c3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #fff;
+  }
+  main { max-width: 46rem; margin: 0 auto; padding: 3.5rem 1.25rem 4rem; }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 2.4rem; line-height: 1.15; margin: 0 0 .4rem;
+    letter-spacing: -.01em;
+  }
+  .tagline { color: var(--muted); font-size: 1.12rem; margin: 0 0 2.2rem; }
+  h2 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.45rem; margin: 2.6rem 0 .8rem;
+  }
+  p { margin: .8rem 0; }
+  img { max-width: 100%; height: auto; display: block; margin: 1.4rem auto; }
+  figcaption { color: var(--muted); font-size: .9rem; line-height: 1.5; margin: -0.4rem 0 1.6rem; }
+  figure { margin: 1.6rem 0; }
+  .method {
+    border-left: 4px solid var(--rule);
+    background: var(--card);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem .9rem;
+    margin: 1.4rem 0;
+  }
+  .method.gd  { border-left-color: var(--gd); }
+  .method.pgd { border-left-color: var(--pgd); }
+  .method.geo { border-left-color: var(--geo); }
+  .method h3 { margin: 0 0 .2rem; font-size: 1.06rem; }
+  .method .formula { overflow-x: auto; padding: .35rem 0 .15rem; }
+  .method p { margin: .5rem 0 .4rem; font-size: .98rem; }
+  .rate { display: inline-block; font-size: .85rem; padding: .12rem .6rem; border-radius: 99px; color: #fff; }
+  .gd  .rate { background: var(--gd); }
+  .pgd .rate { background: var(--pgd); }
+  .geo .rate { background: var(--geo); }
+  .punch {
+    font-family: Georgia, serif; font-size: 1.25rem; text-align: center;
+    margin: 2rem 0 1.2rem; line-height: 1.5;
+  }
+  table { border-collapse: collapse; margin: 1.2rem auto; }
+  th, td { padding: .45rem 1.1rem; text-align: left; border-bottom: 1px solid var(--rule); }
+  th { font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  pre {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+    padding: .9rem 1.1rem; overflow-x: auto; font-size: .88rem; line-height: 1.55;
+  }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  a { color: #0b62c4; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  footer {
+    border-top: 1px solid var(--rule); margin-top: 3rem; padding-top: 1.2rem;
+    color: var(--muted); font-size: .9rem;
+  }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Learning Rotations Online</h1>
+<p class="tagline">One fact per step, three ways to use it — and a factor of two for respecting the geometry.</p>
+
+<p>An unknown rotation \(A \in SO(d)\) reveals itself one pair at a time: a unit vector \(x\) goes in, \(y = Ax\) comes out. An estimate \(W\), starting at the identity, must absorb each pair as it arrives. Every update obeys the same instruction — make \(W\) send \(x\) to \(y\) — but how much of the rotation structure it uses sets how fast \(W\) converges.</p>
+
+<figure>
+  <img src="docs/learning_rotations.gif" alt="Animation: three estimators learning a rotation from streamed pairs">
+  <figcaption>One data stream, three updates (d&nbsp;=&nbsp;3): each panel shows the estimate applied to a reference object, target pose ghosted in gray. Gradient descent (left) leaves the rotation group and the object deforms; projection (middle) keeps it rigid; the geodesic update (right) rotates straight onto the target and lands first.</figcaption>
+</figure>
+
+<h2>Three ways to insert information</h2>
+
+<div class="method gd">
+  <h3>1 &middot; Gradient descent — few assumptions</h3>
+  <div class="formula">$$W \leftarrow W + (y - Wx)\,x^\top$$</div>
+  <p>The smallest change to \(W\) that makes \(Wx = y\) — a Kaczmarz step. It works for any matrix and knows nothing about rotations; \(W\) drifts off \(SO(d)\). Each step projects the error away from one random direction.</p>
+  <span class="rate">squared error &times; \(1 - 1/d\) per step</span>
+</div>
+
+<div class="method pgd">
+  <h3>2 &middot; Gradient descent + projection</h3>
+  <div class="formula">$$W \leftarrow \mathrm{polar}\left(W + (y - Wx)\,x^\top\right)$$</div>
+  <p>The same step, snapped back to the nearest rotation. The projection keeps only the rotational part of the correction — in closed form, a rotation through exactly <em>half</em> the angle between \(Wx\) and \(y\).</p>
+  <span class="rate">squared error &times; \(1 - 3/(2d)\) per step</span>
+</div>
+
+<div class="method geo">
+  <h3>3 &middot; A native update for rotations</h3>
+  <div class="formula">$$W \leftarrow RW, \qquad R = I + K + \frac{K^2}{1+c}, \qquad K = yu^\top - uy^\top,\quad u = Wx,\quad c = u \cdot y$$</div>
+  <p>\(R\) is the geodesic rotation carrying \(Wx\) exactly onto \(y\): the full angle, never leaving \(SO(d)\). It corrects the error on both sides at once, doubling the contraction. <a href="https://github.com/yaroslavvb/learning-rotations/blob/main/docs/geodesic_update.md">Full derivation &rarr;</a></p>
+  <span class="rate">squared error &times; \(1 - 2/d\) per step</span>
+</div>
+
+<h2>Result</h2>
+
+<p class="punch">The three contractions sit in ratio <strong>1&nbsp;:&nbsp;1.5&nbsp;:&nbsp;2</strong> —<br>using the constraint doubles the rate; projecting after the fact recovers half the gain.</p>
+
+<figure>
+  <img src="large_d_collapse.png" alt="Convergence of the three updates at d = 128 against per-step contraction theory">
+  <figcaption>256 trials at d&nbsp;=&nbsp;128, distance to the target on a log scale. Gradient descent rides its theory line \((1-1/d)^{t/2}\) exactly; the constrained methods run parallel to theirs after an early transient.</figcaption>
+</figure>
+
+<h2>Implementation</h2>
+
+<p>Each update is a correction of rank at most two, so a step costs \(O(d^2)\) — no SVD anywhere: the projection in update 2 uses its half-angle closed form, and the geodesic rotation collapses to two outer products. The figure reproduces in about two seconds on a laptop:</p>
+
+<pre><code>git clone https://github.com/yaroslavvb/learning-rotations
+python large_d_collapse.py     # simulate + plot
+python benchmark_d128.py       # equivalence vs SVD reference + timings</code></pre>
+
+<footer>
+  <a href="https://github.com/yaroslavvb/learning-rotations">Code on GitHub</a> &middot;
+  <a href="https://github.com/yaroslavvb/learning-rotations/blob/main/docs/geodesic_update.md">Derivation of the geodesic update</a>
+</footer>
+
+</main>
+</body>
+</html>
