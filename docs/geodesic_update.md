@@ -6,6 +6,20 @@ This note derives, in full detail, the closed form of the geodesic update used i
 W \leftarrow R W, \qquad R = I + K + \frac{K^2}{1 + c}, \qquad K = y u^\top - u y^\top, \quad u = Wx, \quad c = u \cdot y .
 ```
 
+## Overview
+
+The derivation runs in five moves.
+
+1. **Reduce to a single rotation.** The update must keep $W$ in $SO(d)$ while repairing the prediction, so write the new estimate as $W' = RW$. The condition $W'x = y$ becomes $Ru = y$ for $u = Wx$, and the whole problem collapses to one question: among all rotations sending $u$ to $y$, which is closest to the identity?
+2. **Locate the minimizer geometrically.** Splitting any candidate rotation into its invariant planes shows that moving $u$ to $y$ costs at least the angle $\varphi$ between them, and the budget is met only by rotating in the plane $\mathrm{span} \lbrace u, y \rbrace$ through exactly $\varphi$, leaving the orthogonal complement untouched (Section 1).
+3. **Find the generator.** The skew matrix $K = yu^\top - uy^\top$ is precisely the infinitesimal rotation of that plane, scaled by $\sin\varphi$; all of its powers collapse through the single identity $K^3 = -\sin^2 \varphi \cdot K$ (Sections 2–3).
+4. **Exponentiate.** The plane rotation through $\varphi$ is the matrix exponential of $\varphi K / \sin\varphi$. The power-collapse identity sums the series into Rodrigues' formula, and the half-angle identity $1 - \cos\varphi = \sin^2 \varphi / (1 + \cos\varphi)$ then eliminates every trigonometric quantity, leaving $R = I + K + K^2/(1+c)$ (Section 4).
+5. **Verify and implement.** The formula is checked directly — $Ru = y$, $R^\top R = I$, $\det R = 1$ — and since $R - I$ has rank two, the update costs $O(d^2)$: two matrix–vector products and one rank-two correction (Sections 5–6).
+
+Degenerate alignments ($c = \pm 1$) are handled in Section 7, and two appendices connect the formula outward: projected gradient descent turns out to be the same rotation through half the angle, and the linearized update yields the per-step contraction $1 - 2/d$ quoted in the main report.
+
+## Setup
+
 Throughout, $W \in SO(d)$ is the current estimate, $x$ is a unit input, $y = Ax$ is the observed output of the unknown rotation $A$, and therefore $u = Wx$ and $y$ are both unit vectors: $u$ is where $W$ currently sends $x$, and $y$ is where it should go. We write
 
 ```math
