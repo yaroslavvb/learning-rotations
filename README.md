@@ -37,7 +37,6 @@ $R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, nev
 | GD + projection | orthogonality | $1 - 3/(2d)$ |
 | Geodesic | orthogonality | $1 - 2/d$ |
 
-The rates sit in ratio **1 : 1.5 : 2** — exploiting the constraint doubles the per-step contraction, and projecting recovers exactly half of that gain. After $t$ steps the distance has fallen by $(1 - c/d)^{t/2}$, so each constant factor of error reduction costs $O(d)$ samples:
 
 ![Convergence of the three updates at d = 128 against theory](large_d_collapse.png)
 
