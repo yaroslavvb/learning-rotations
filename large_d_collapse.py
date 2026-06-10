@@ -180,8 +180,9 @@ if __name__ == "__main__":
     for m, c in THEORY_C.items():
         plt.semilogy(t, dist[m] / dist[m][0], color=COLORS[m], lw=1.3,
                      label=LABELS[m])
-        plt.semilogy(t, (1 - c / D) ** (t / 2), "--", color=COLORS[m],
-                     lw=1.2, label=rf"theory $({RATE_TEX[m]})^{{t/2}}$")
+        plt.semilogy(t, (1 - c / D) ** (t / 2), linestyle="none", marker="o",
+                     markersize=3.5, markevery=50, color=COLORS[m],
+                     label=rf"theory $({RATE_TEX[m]})^{{t/2}}$")
     plt.legend(fontsize=9)
     plt.xlabel(r"Step $t$")
     plt.ylabel(r"$\|W_t - A\|_F \;/\; \sqrt{2d}$")
