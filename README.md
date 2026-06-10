@@ -12,7 +12,7 @@ An unknown rotation $A \in SO(d)$ is observed through a stream of pairs $(x, y =
 W \leftarrow W + (y - Wx) x^\top
 ```
 
-The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. It works for any matrix and knows nothing about rotations; $W$ drifts off $SO(d)$. The error obeys $W' - A = (W - A)(I - xx^\top)$ exactly: each step projects the error away from one random direction, contracting its expected square by $1 - 1/d$.
+The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. It works for any matrix and knows nothing about rotations; $W$ drifts off $SO(d)$. Each step projects the error away from one random direction. Loss contracts $1 - 1/d$ per step.
 
 ### 2. Gradient descent + projection
 
@@ -20,7 +20,7 @@ The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. It works for
 W \leftarrow \mathrm{polar} \left( W + (y - Wx) x^\top \right)
 ```
 
-The same step, snapped back to the nearest rotation. The projection keeps only the rotational part of the correction, and the result has a striking closed form: rotate $W$ in the plane of $Wx$ and $y$, through **half** the angle between them — exactly a half-step of update 3, at every step, not just near convergence. Contraction: $1 - 3/(2d)$.
+The same step, snapped back to the nearest rotation. The projection keeps only the rotational part of the correction. Loss contraction: $1 - 3/(2d)$.
 
 ### 3. A native update for rotations
 
@@ -28,7 +28,7 @@ The same step, snapped back to the nearest rotation. The projection keeps only t
 W \leftarrow R W, \qquad R = I + K + \frac{K^2}{1 + c}, \qquad K = y u^\top - u y^\top, \quad u = Wx, \quad c = u \cdot y
 ```
 
-$R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, never leaving $SO(d)$. Near the target the skew error contracts two-sidedly, $\Omega \mapsto (I - P) \Omega (I - P)$ with $P = yy^\top$, doubling the contraction. Per step: $1 - 2/d$.
+$R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, never leaving $SO(d)$. Loss contraction: $1 - 2/d$.
 
 ## Result
 
