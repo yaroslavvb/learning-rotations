@@ -4,8 +4,6 @@ An unknown rotation $A \in SO(d)$ is observed through a stream of pairs $(x, y =
 
 ![Three estimators learning a rotation from streamed pairs (x, Ax)](docs/learning_rotations.gif)
 
-*One data stream, three updates (d = 3): each panel shows the estimate W applied to a reference object, with the target pose ghosted in gray. Gradient descent (left) leaves the rotation group and the object deforms; projection (middle) keeps it rigid; the geodesic update (right) rotates straight onto the target and lands first. ([docs/animate_learning.py](docs/animate_learning.py))*
-
 ## Three ways to insert information
 
 ### 1. Gradient descent — few assumptions
