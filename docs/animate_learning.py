@@ -144,9 +144,12 @@ for k, m in enumerate(METHODS):
     ax.add_patch(circle)
     ghost_segs, ghost_cols = knot_segments(A)
     ghost_cols = ghost_cols.copy()
-    ghost_cols[:, 3] = 0.18
-    ax.add_collection(LineCollection(ghost_segs, colors=ghost_cols, lw=2.4))
-    moving = LineCollection([], lw=2.0, zorder=3)
+    # blend toward white instead of using alpha: translucent overlapping
+    # round caps would composite into visible beads
+    ghost_cols[:, :3] = 1.0 - 0.22 * (1.0 - ghost_cols[:, :3])
+    ax.add_collection(LineCollection(ghost_segs, colors=ghost_cols, lw=2.4,
+                                     capstyle="round"))
+    moving = LineCollection([], lw=2.0, zorder=3, capstyle="round")
     ax.add_collection(moving)
     y_mark, = ax.plot([], [], "*", color="k", ms=11, zorder=5)
     x_mark, = ax.plot([], [], "o", mfc="none", mec="0.55", ms=6, zorder=5)
@@ -211,6 +214,6 @@ if __name__ == "__main__":
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "learning_rotations.gif")
     anim = FuncAnimation(fig, draw, frames=TOTAL, interval=1000 / FPS)
-    anim.save(out, writer=PillowWriter(fps=FPS), dpi=80)
+    anim.save(out, writer=PillowWriter(fps=FPS), dpi=160)  # ~1500px wide: crisp on retina GitHub
     print(f"{out}: {os.path.getsize(out) / 1e6:.1f} MB, {TOTAL} frames")
     print({m: f"{errs[m][-1]:.2e}" for m in METHODS})
