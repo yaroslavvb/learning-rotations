@@ -12,7 +12,7 @@ An unknown rotation $A \in SO(d)$ is observed through a stream of pairs $(x, y =
 W \leftarrow W + (y - Wx) x^\top
 ```
 
-The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. It works for any matrix and knows nothing about rotations; $W$ drifts off $SO(d)$. Each step projects the error away from one random direction, hence loss contracts $1 - 1/d$ per step.
+The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. Equivalent to an SGD step with greedy per-step line search. $W$ drifts off $SO(d)$. Each step decimates the error in one random dimension. Number of dimensions is $d$ hence loss contracts $1 - 1/d$ per step.
 
 ### 2. Gradient descent + projection
 
@@ -20,7 +20,7 @@ The smallest change to $W$ that makes $Wx = y$ — a Kaczmarz step. It works for
 W \leftarrow \mathrm{polar} \left( W + (y - Wx) x^\top \right)
 ```
 
-The same step, snapped back to the nearest rotation. The projection keeps only the rotational part of the correction.
+Kazcmarz step, snapped back to the nearest rotation. The projection keeps only the rotational part of the correction.
 
 ### 3. A native update for rotations
 
@@ -35,8 +35,8 @@ $R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, nev
 | Update | Uses | Contraction of $\mathbb{E} \Vert W - A \Vert_F^2$ |
 |---|---|---|
 | Gradient descent | nothing | $1 - 1/d$, exact |
-| GD + projection | orthogonality | $1 - 3/(2d)$ |
-| Geodesic | orthogonality | $1 - 2/d$ |
+| GD + projection | additive update, project to SO | $1 - 3/(2d)$ |
+| Geodesic | multiplicative update, maintaining SO| $1 - 2/d$ |
 
 
 ![Convergence of the three updates at d = 128 against theory](large_d_collapse.png)
