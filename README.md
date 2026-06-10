@@ -30,7 +30,7 @@ The same step, snapped back to the nearest rotation. The projection keeps only t
 W \leftarrow R W, \qquad R = I + K + \frac{K^2}{1 + c}, \qquad K = y u^\top - u y^\top, \quad u = Wx, \quad c = u \cdot y
 ```
 
-$R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, never leaving $SO(d)$. Near the target the skew error contracts two-sidedly, $\Omega \mapsto (I - P) \Omega (I - P)$ with $P = yy^\top$, doubling the exponent. Contraction: $1 - 2/d$.
+$R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, never leaving $SO(d)$. Near the target the skew error contracts two-sidedly, $\Omega \mapsto (I - P) \Omega (I - P)$ with $P = yy^\top$, doubling the contraction. Per step: $1 - 2/d$.
 
 ## Result
 
@@ -40,7 +40,7 @@ $R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, nev
 | GD + projection | orthogonality | $1 - 3/(2d)$ |
 | Geodesic | orthogonality | $1 - 2/d$ |
 
-The rates sit in ratio **1 : 1.5 : 2** — exploiting the constraint doubles the convergence exponent, and projecting recovers exactly half of that gain. Convergence costs $O(d)$ samples per constant factor, so on the natural clock $\tau = t/d$ the distance falls as $e^{-c\tau/2}$:
+The rates sit in ratio **1 : 1.5 : 2** — exploiting the constraint doubles the per-step contraction, and projecting recovers exactly half of that gain. After $t$ steps the distance has fallen by $(1 - c/d)^{t/2}$, so each constant factor of error reduction costs $O(d)$ samples:
 
 ![Convergence of the three updates at d = 128 against theory](large_d_collapse.png)
 

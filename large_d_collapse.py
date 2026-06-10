@@ -1,9 +1,9 @@
-"""Large-d regime at d = 128: normalized error vs rescaled time tau = t/d.
+"""Convergence of the three rotation-learning updates at d = 128.
 
-The per-step contraction (1 - c/d) of E||W - A||_F^2 becomes exp(-c tau) in
-rescaled time, so Frobenius distance follows exp(-c tau / 2) with c = 1 (GD),
-3/2 (projected GD), 2 (exact geodesic).
-W_0 = I, A = pi/2 isoclinic; initial distance is sqrt(2d), divided out.
+E||W - A||_F^2 contracts by (1 - c/d) per step with c = 1 (GD), 3/2
+(projected GD), 2 (exact geodesic), so Frobenius distance follows
+(1 - c/d)^(t/2). W_0 = I, A = pi/2 isoclinic; initial distance is
+sqrt(2d), divided out.
 
 Fast path (no SVD): every update is a rank-<=2 correction of W, O(trials*d^2)
 per step. For W in SO(d) the polar projection of the GD step W + r x^T has a
@@ -23,7 +23,8 @@ LABELS = {"gd": "GD (Unconstrained)", "pgd": "Projected GD", "geo": "Exact Geode
 COLORS = {"gd": "tab:blue", "pgd": "tab:orange", "geo": "tab:green"}
 D = 128
 TRIALS = 256
-TAU_MAX = 10.0
+STEPS = 1280
+RATE_TEX = {"gd": "1 - 1/d", "pgd": "1 - 3/(2d)", "geo": "1 - 2/d"}
 
 
 def aligned_isoclinic(n, theta):
@@ -169,23 +170,20 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     workers = os.cpu_count()//2
-    steps = int(TAU_MAX * D)
     t0 = time.perf_counter()
     with mp.get_context("spawn").Pool(workers) as pool:
-        dist, drift = simulate_fast(D, TRIALS, steps, pool=pool, nchunks=workers)
-    print(f"d={D} ({TRIALS} trials, {steps} steps, {workers} workers): "
+        dist, drift = simulate_fast(D, TRIALS, STEPS, pool=pool, nchunks=workers)
+    print(f"d={D} ({TRIALS} trials, {STEPS} steps, {workers} workers): "
           f"{time.perf_counter() - t0:.1f}s | orthogonality drift {drift:.1e}")
 
-    tau = np.arange(steps + 1) / D
-    tau_th = np.linspace(0, TAU_MAX, 200)
+    t = np.arange(STEPS + 1)
     for m, c in THEORY_C.items():
-        plt.semilogy(tau, dist[m] / dist[m][0], color=COLORS[m], lw=1.3,
+        plt.semilogy(t, dist[m] / dist[m][0], color=COLORS[m], lw=1.3,
                      label=LABELS[m])
-        exponent = r"\tau/2" if c == 1 else rf"{c:g}\tau/2"
-        plt.semilogy(tau_th, np.exp(-c * tau_th / 2), "--", color=COLORS[m],
-                     lw=1.2, label=rf"theory $e^{{-{exponent}}}$")
+        plt.semilogy(t, (1 - c / D) ** (t / 2), "--", color=COLORS[m],
+                     lw=1.2, label=rf"theory $({RATE_TEX[m]})^{{t/2}}$")
     plt.legend(fontsize=9)
-    plt.xlabel(r"Rescaled time  $\tau = t/d$")
+    plt.xlabel(r"Step $t$")
     plt.ylabel(r"$\|W_t - A\|_F \;/\; \sqrt{2d}$")
     plt.title(rf"$d = {D}$, {TRIALS} trials: $W_0 = I$, $A$ = $\pi/2$ isoclinic")
     plt.tight_layout()
