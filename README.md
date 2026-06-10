@@ -40,8 +40,6 @@ $R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, nev
 
 ![Convergence of the three updates at d = 128 against theory](large_d_collapse.png)
 
-At $d = 128$, gradient descent rides its theory line exactly; the constrained methods run parallel to theirs, lifted by a small constant acquired during the early nonlinear transient.
-
 ## Implementation
 
 The figure reproduces in about two seconds on a laptop:
