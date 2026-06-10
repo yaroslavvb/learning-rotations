@@ -1,10 +1,8 @@
 # Learning Rotations Online
 
-An unknown rotation $A \in SO(d)$ is observed through a stream of pairs $(x, y = Ax)$. Customizing update to take into account knowledge of $A$ improves convergence. 
+An unknown rotation $A \in SO(d)$ is observed through a stream of pairs $(x, y = Ax)$. Three custom updates below
 
 ![Three estimators learning a rotation from streamed pairs (x, Ax)](docs/learning_rotations.gif)
-
-## Three ways to insert information
 
 ### 1. Gradient descent
 
