@@ -44,7 +44,7 @@ At $d = 128$, gradient descent rides its theory line exactly; the constrained me
 
 ## Implementation
 
-Each update is a correction of rank at most two, so a step costs $O(d^2)$ — no SVD anywhere; the projection in update 2 uses its half-angle closed form. The figure reproduces in about two seconds on a laptop:
+The figure reproduces in about two seconds on a laptop:
 
 ```sh
 python large_d_collapse.py     # simulate + plot
