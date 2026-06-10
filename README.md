@@ -28,7 +28,8 @@ The same step, snapped back to the nearest rotation. The projection keeps only t
 W \leftarrow R W, \qquad R = I + K + \frac{K^2}{1 + c}, \qquad K = y u^\top - u y^\top, \quad u = Wx, \quad c = u \cdot y
 ```
 
-$R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, never leaving $SO(d)$.
+$R$ is the geodesic rotation carrying $Wx$ exactly onto $y$: the full angle, never leaving $SO(d)$. Detailed derivation: [docs/geodesic_update.md](docs/geodesic_update.md).
+
 ## Result
 
 | Update | Uses | Contraction of $\mathbb{E} \Vert W - A \Vert_F^2$ |
