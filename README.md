@@ -1,6 +1,6 @@
 # Learning Rotations Online
 
-An unknown rotation $A \in SO(d)$ is observed through a stream of pairs $(x, y = Ax)$, with $x$ uniform on the unit sphere. The estimate $W$ starts at $I$ and absorbs one pair per step. The same fact — that $W$ should send $x$ to $y$ — can be inserted three ways, and the convergence rate is set by how much rotation structure the update uses.
+An unknown rotation $A \in SO(d)$ is observed through a stream of pairs $(x, y = Ax)$. Customizing update to take into account knowledge of $A$ improves convergence 
 
 ![Three estimators learning a rotation from streamed pairs (x, Ax)](docs/learning_rotations.gif)
 
