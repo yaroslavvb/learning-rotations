@@ -77,11 +77,105 @@ def native_step(W, X, Y):
     return W + Q @ ((Rs - np.eye(4)) @ np.einsum("tdm,tde->tme", Q, W))
 
 
+def _rot2_apply(M, a, b, c):
+    """Apply the Rodrigues rotation I + K + K^2/(1+c), K = a b^T - b a^T,
+    to columns... to a stack of matrices/vectors M (batched on axis 0).
+    a, b unit (T, d); c = a.b (T,). M is (T, d, k) or (T, d)."""
+    vec = M.ndim == 2
+    if vec:
+        M = M[:, :, None]
+    bM = np.einsum("td,tdk->tk", b, M)
+    aM = np.einsum("td,tdk->tk", a, M)
+    KM = a[:, :, None] * bM[:, None, :] - b[:, :, None] * aM[:, None, :]
+    bK = np.einsum("td,tdk->tk", b, KM)
+    aK = np.einsum("td,tdk->tk", a, KM)
+    KKM = a[:, :, None] * bK[:, None, :] - b[:, :, None] * aK[:, None, :]
+    out = M + KM + KKM / (1 + c)[:, None, None]
+    return out[:, :, 0] if vec else out
+
+
+def native_step_rodrigues2(W, X, Y, tol=1e-9):
+    """SVD-free closed form of the batch-2 native update: two Rodrigues
+    rotations (align pair 1; align pair 2 inside the orthocomplement of y1)
+    followed by one closed-form angle that spends the leftover stabilizer
+    freedom on the trace. Exactly equals the constrained-Procrustes optimum."""
+    u1, u2o = (W @ X).transpose(2, 0, 1)              # (T, d) each
+    y1, y2 = Y.transpose(2, 0, 1)
+
+    # step 1: Rodrigues rotation taking u1 -> y1 (guarded at c1 = -1)
+    c1 = np.clip(np.einsum("td,td->t", u1, y1), -1.0, 1.0)
+    bad = 1 + c1 < tol
+    c1 = np.where(bad, 0.0, c1)                       # bad rows fall back below
+    u2 = _rot2_apply(u2o, y1, u1, c1)
+
+    # step 2: Rodrigues rotation in span{p, q} (perp to y1) taking u2 -> y2
+    a = np.einsum("td,td->t", y1, y2)
+    p = u2 - a[:, None] * y1
+    q = y2 - a[:, None] * y1
+    pn = np.linalg.norm(p, axis=1)
+    skip2 = pn < tol                                  # u2 already in place
+    pn = np.where(skip2, 1.0, pn)
+    ph, qh = p / pn[:, None], q / pn[:, None]
+    c2 = np.clip(np.einsum("td,td->t", ph, qh), -1.0, 1.0)
+    bad |= (1 + c2 < tol) & ~skip2
+    c2 = np.where(skip2 | bad, 0.0, c2)
+    qh = np.where(skip2[:, None], ph, qh)             # makes K2 = 0 on skipped rows
+
+    # step 3: stabilizer plane Z = span{u1,u2}-perp inside the active 4-space
+    # (Q acts before R1, so it must fix the ORIGINAL u1, u2)
+    f1 = u1
+    g = u2o - np.einsum("td,td->t", f1, u2o)[:, None] * f1
+    gn = np.linalg.norm(g, axis=1)
+    f2 = g / np.where(gn < tol, 1.0, gn)[:, None]
+
+    def gs(v, basis):
+        for b in basis:
+            v = v - np.einsum("td,td->t", b, v)[:, None] * b
+        n = np.linalg.norm(v, axis=1)
+        return v / np.where(n < tol, 1.0, n)[:, None], n >= tol
+
+    z1, ok1 = gs(y1.copy(), [f1, f2])
+    z2, ok2 = gs(y2.copy(), [f1, f2, z1])
+    free = ok1 & ok2                                  # else no in-plane freedom
+
+    Rz1 = _rot2_apply(_rot2_apply(z1, y1, u1, c1), qh, ph, c2)
+    Rz2 = _rot2_apply(_rot2_apply(z2, y1, u1, c1), qh, ph, c2)
+    alpha = np.einsum("td,td->t", z1, Rz1) + np.einsum("td,td->t", z2, Rz2)
+    beta = np.einsum("td,td->t", z1, Rz2) - np.einsum("td,td->t", z2, Rz1)
+    theta = np.where(free, np.arctan2(beta, alpha), 0.0)
+
+    # W' = R2 R1 Q W, each factor applied as a rank-2 correction
+    ct, st = np.cos(theta), np.sin(theta)
+    zW1 = np.einsum("td,tde->te", z1, W)
+    zW2 = np.einsum("td,tde->te", z2, W)
+    QW = (W + (ct - 1)[:, None, None] * (z1[:, :, None] * zW1[:, None, :]
+                                         + z2[:, :, None] * zW2[:, None, :])
+          + st[:, None, None] * (z2[:, :, None] * zW1[:, None, :]
+                                 - z1[:, :, None] * zW2[:, None, :]))
+    Wn = _rot2_apply(_rot2_apply(QW, y1, u1, c1), qh, ph, c2)
+
+    if bad.any():                                     # antipodal guards: rare
+        Wn[bad] = native_step(W[bad], X[bad], Y[bad])
+    return Wn
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     rng = np.random.default_rng(SEED)
     A = aligned_isoclinic(D, np.pi / 2)
+
+    # self-check: the two-batch Rodrigues closed form equals the subspace-SVD
+    # optimum, both from cold start and near convergence
+    Xc = draw_batch(rng, 64, D)
+    Yc = np.einsum("ij,tjk->tik", A, Xc)
+    for Wc in (np.tile(np.eye(D), (64, 1, 1)),
+               batched_polar_so(A + 1e-4 * rng.standard_normal((64, D, D)))):
+        gap = np.abs(native_step(Wc, Xc, Yc)
+                     - native_step_rodrigues2(Wc, Xc, Yc)).max()
+        assert gap < 1e-12, gap
+    print("rodrigues2 == subspace-SVD optimum (max gap < 1e-12 asserted)")
+
     Ws = {m: np.tile(np.eye(D), (TRIALS, 1, 1)) for m in THEORY}
     dist = {m: np.zeros(STEPS + 1) for m in THEORY}
     sq = {m: np.zeros(STEPS + 1) for m in THEORY}

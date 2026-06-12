@@ -83,7 +83,7 @@
 <div class="method geo">
   <h3>3 &middot; A native update for rotations</h3>
   <div class="formula">$$W \leftarrow R\,W, \qquad R \;=\; \arg\min_{\substack{R \in SO(d) \\ R\,W x_i \,=\, y_i,\; i = 1,2}} \lVert R - I \rVert_F$$</div>
-  <p>Rotate \(W\) by the <em>smallest</em> rotation that fixes both predictions exactly. This is precisely the <a href="trace-procrustes.html">trace-maximal orthogonal completion</a> of the two constraints: it lives in the \(\le 4\)-dimensional subspace \(\mathrm{span}\{Wx_1, Wx_2, y_1, y_2\}\), where it is solved in closed form by one tiny SVD plus a determinant correction — \(O(d^2)\) per step, no \(d \times d\) factorization. The single-pair Rodrigues rotation \(I + K + K^2/(1+c)\) is its one-constraint special case.</p>
+  <p>Rotate \(W\) by the <em>smallest</em> rotation that fixes both predictions exactly. This is precisely the <a href="trace-procrustes.html">trace-maximal orthogonal completion</a> of the two constraints: it lives in the \(\le 4\)-dimensional subspace \(\mathrm{span}\{Wx_1, Wx_2, y_1, y_2\}\), and the single-pair Rodrigues rotation \(I + K + K^2/(1+c)\) is its one-constraint special case. It even has an SVD-free closed form in the same spirit — two Rodrigues rotations and one arctangent: see <a href="#rodrigues-two">the two-batch Rodrigues formula</a> below.</p>
   <span class="rate">squared error &times; \(1 - 4/d + \frac{2}{d(d-1)}\) per step</span>
 </div>
 
@@ -116,6 +116,23 @@
 $$1 - \frac{2}{d} \;<\; \left(1 - \frac{1}{d}\right)^2 = 1 - \frac{2}{d} + \frac{1}{d^2},$$
 <p>and for the native update \(1 - 4/d + \tfrac{2}{d(d-1)} < (1 - 2/d)^2 = 1 - 4/d + \tfrac{4}{d^2}\) for every \(d > 2\). Two sequential steps waste the overlap between their random directions; the batch step never re-corrects what it already fixed. The advantage is \(O(1/d^2)\) per step — real, but invisible at \(d = 128\).</p>
 
+<h2 id="rodrigues-two">The two-batch Rodrigues formula</h2>
+
+<p>The argmin in update 3 needs no SVD. Like the single-pair Rodrigues rotation, it can be assembled from inner products alone: two plane rotations satisfy the constraints, and one arctangent makes the result the <em>smallest</em> such rotation. Write \(u_1 = Wx_1\), \(u_2 = Wx_2\); all four of \(u_1, u_2, y_1, y_2\) are unit vectors, and \(u_1 \cdot u_2 = y_1 \cdot y_2 = x_1 \cdot x_2\) automatically.</p>
+
+<p><strong>Step 1 — align the first pair.</strong> A single-pair Rodrigues rotation, applied also to \(u_2\):</p>
+$$R_1 = I + K_1 + \frac{K_1^2}{1 + u_1 \cdot y_1}, \qquad K_1 = y_1 u_1^\top - u_1 y_1^\top, \qquad u_2 \leftarrow R_1 u_2 .$$
+
+<p><strong>Step 2 — align the second pair without disturbing the first.</strong> Split off the \(y_1\)-components: with \(a = y_1 \cdot y_2\) (which automatically equals \(y_1 \cdot u_2\) after step 1),</p>
+$$p = u_2 - a\,y_1, \qquad q = y_2 - a\,y_1, \qquad \lVert p \rVert = \lVert q \rVert = \sqrt{1 - a^2},$$
+<p>and rotate \(\hat p\) onto \(\hat q\) with a second Rodrigues rotation, \(R_2 = I + K_2 + K_2^2/(1 + \hat p \cdot \hat q)\), \(K_2 = \hat q \hat p^\top - \hat p \hat q^\top\). Its plane is orthogonal to \(y_1\), so the first constraint survives: \(R_2 R_1\) now satisfies both.</p>
+
+<p><strong>Step 3 — spend the leftover freedom on the trace.</strong> \(R_2 R_1\) is feasible but not yet minimal. The smallest feasible rotation acts only on the active 4-space \(\mathrm{span}\{u_1, u_2, y_1, y_2\}\) — turning anything outside it costs trace and satisfies no constraint, the same localization as in the <a href="trace-procrustes.html">trace-maximal completion</a> — and every feasible rotation acting only there is \(R_2 R_1 Q\), where \(Q\) turns the one plane inside it that the constraints cannot see: \(Z\), the orthogonal complement of \(\mathrm{span}\{u_1, u_2\}\) within the 4-space. Build an orthonormal basis \(z_1, z_2\) of \(Z\) (Gram&ndash;Schmidt of \(y_1, y_2\) against the orthonormalized \(u\)'s) and set</p>
+$$\alpha = z_1 \cdot R_2 R_1 z_1 + z_2 \cdot R_2 R_1 z_2, \qquad \beta = z_1 \cdot R_2 R_1 z_2 - z_2 \cdot R_2 R_1 z_1, \qquad \theta^\star = \mathrm{atan2}(\beta, \alpha),$$
+<p>and let \(Q\) rotate \(Z\) by \(\theta^\star\) — the same two-coefficient trace maximization that produced the half-angle in the projected-GD analysis, and that picks the proper-rotation optimum directly (no determinant correction needed).</p>
+
+<p>The update is \(W \leftarrow R_2 R_1 Q\, W\): three plane rotations, each applied as a rank-2 correction. Forming the factors costs a handful of inner products and one <code>atan2</code> — \(O(d)\); only applying them to \(W\) is \(O(d^2)\), and nothing larger than a scalar trigonometric pair is ever solved for. Implemented as <code>native_step_rodrigues2</code> alongside the subspace-SVD route, the two agree to \(10^{-14}\) across random instances, near convergence, and from cold start — the simulation script asserts this on every run. That agreement also confirms the circle parametrization within the active subspace: the SVD route searches the full completion freedom there, so any angle the circle missed would show up as a trace gap. (Probability-zero antipodal alignments fall back to the SVD route.) Steps 1&ndash;2 alone already satisfy the constraints and match the optimum to first order near convergence; step 3 is what makes the update exactly the smallest feasible rotation at any distance.</p>
+
 <h2>Where the constants come from</h2>
 
 <p>Write \(W = (I + \Omega)A\) with \(\Omega\) small and skew, and let \(P\) project onto \(\mathrm{span}\{y_1, y_2\}\). The three updates linearize exactly as at batch one, with rank-2 \(P\):</p>
@@ -138,7 +155,7 @@ $$\text{GD: } 1 - \frac{b}{d} \qquad
 
 <h2>Implementation</h2>
 
-<p>The simulation is <a href="https://github.com/yaroslavvb/learning-rotations/blob/main/batch_two_collapse.py">batch_two_collapse.py</a>: the block-Kaczmarz step is a closed-form \(2\times 2\) solve, the native update runs entirely in its 4-dimensional subspace (batched \(4 \times 4\) SVDs, \(O(d^2)\) per step), and only the projected-GD baseline pays for a dense polar decomposition. Orthogonality drift after 640 steps: \(8 \times 10^{-15}\); final constraint residual: \(2 \times 10^{-15}\).</p>
+<p>The simulation is <a href="https://github.com/yaroslavvb/learning-rotations/blob/main/batch_two_collapse.py">batch_two_collapse.py</a>: the block-Kaczmarz step is a closed-form \(2\times 2\) solve, the native update is implemented twice — the subspace route (batched \(4 \times 4\) SVDs) and the two-batch Rodrigues closed form above, agreeing to \(10^{-14}\) — and only the projected-GD baseline pays for a dense polar decomposition. One honest engineering note: in batched NumPy the Rodrigues form is not the faster of the two (it makes a few dozen memory-bound passes over the trial stack where the subspace route fuses its work into a few GEMMs); its advantages are the explicit formula and the \(O(d)\) cost of forming the rotation, which is what matters when updates are applied one at a time. Orthogonality drift after 640 steps: \(8 \times 10^{-15}\); final constraint residual: \(2 \times 10^{-15}\).</p>
 
 <pre><code>python batch_two_collapse.py     # simulate, fit constants, regenerate both figures</code></pre>
 
