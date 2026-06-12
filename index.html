@@ -115,6 +115,9 @@
   <div class="formula">$$W \leftarrow RW, \qquad R = I + K + \frac{K^2}{1+c}$$
   $$K = yu^\top - uy^\top, \qquad u = Wx, \qquad c = u \cdot y$$</div>
   <p>\(R\) is the geodesic rotation carrying \(Wx\) exactly onto \(y\): the full angle, never leaving \(SO(d)\). It corrects the error on both sides at once, doubling the contraction. <a href="https://github.com/yaroslavvb/learning-rotations/blob/main/docs/geodesic_update.md">Full derivation &rarr;</a></p>
+  <p>The same rotation in trigonometric form, with \(\varphi = \arccos c\) the angle from \(Wx\) to \(y\) and \(G = K/\sin\varphi\) the unit generator of their plane:</p>
+  <div class="formula">$$R = I + \sin\varphi\, G + (1 - \cos\varphi)\, G^2$$</div>
+  <p>Replacing \(\varphi\) by \(\eta\varphi\) rotates only a fraction \(\eta\) of the way — the damped step to use when the observations are noisy.</p>
   <span class="rate">squared error &times; \(1 - 2/d\) per step</span>
 </div>
 
